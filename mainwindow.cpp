@@ -13,11 +13,11 @@ MainWindow::MainWindow(QWidget *parent)
 	top_bar->setFloatable(false);
 	top_bar->setIconSize(QSize(16, 16));
 
-	top_bar->addAction("File");
-	top_bar->addAction("Undo");
-	top_bar->addAction("Redo");
-	top_bar->addAction("View");
-	top_bar->addAction("Window");
+	top_bar->addAction("file");
+	top_bar->addAction("undo");
+	top_bar->addAction("redo");
+	top_bar->addAction("view");
+	top_bar->addAction("window");
 
 	// auto *central = new QWidget(this);
 	// setCentralWidget(central);
