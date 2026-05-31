@@ -1,11 +1,21 @@
+// main.cpp
 #include "mainwindow.h"
-
 #include <QApplication>
+#include <QFile>
+#include <QTextStream>
+#include <QDir>
+#include <QDebug>
 
 int main(int argc, char *argv[])
 {
-	QApplication a(argc, argv);
-	MainWindow w;
-	w.show();
-	return QCoreApplication::exec();
+	QApplication app(argc, argv);
+
+	QFile styleFile(":/main.qss");
+	if (styleFile.open(QIODevice::ReadOnly)) {
+		app.setStyleSheet(styleFile.readAll());
+	}
+
+	MainWindow window;
+	window.show();
+	return app.exec();
 }
