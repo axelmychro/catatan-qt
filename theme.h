@@ -13,6 +13,7 @@ inline QString load()
 
 	QString qss = QTextStream(&file).readAll();
 	qss.replace("{{bg}}", "#24273a"); // base
+	qss.replace("{{mantle}}", "#1e2030"); // mantle
 	qss.replace("{{fg}}", "#cad3f5"); // text
 	qss.replace("{{border}}", "#363a4f"); // surface
 	qss.replace("{{hover}}", "#6e738d"); // overlay
