@@ -1,5 +1,34 @@
+* {
+    background: transparent;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+}
+
 QWidget {
-    background-color: #24273a;
-    color: #cdd6f4;
-    font-size: 14px;
+    background-color: {{bg}};
+    color: {{fg}};
+    font-size: 16px;
+}
+
+/* TOOLBAR, TOP BAR, BUTTONS */
+QToolBar {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid {{border}};
+}
+
+QToolButton {
+    background: transparent;
+    padding: 2px 2px;
+    color: {{fg}};
+}
+
+QToolButton:hover {
+    background: {{hover}};
+}
+
+QToolButton:pressed {
+    background: {{active}};
 }

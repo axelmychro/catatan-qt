@@ -1,16 +1,13 @@
 // main.cpp
 #include "mainwindow.h"
 #include <QApplication>
-#include <QFile>
+#include "theme.h"
 
 int main(int argc, char *argv[])
 {
 	QApplication app(argc, argv);
 
-	QFile styleFile(":/main.qss");
-	if (styleFile.open(QIODevice::ReadOnly)) {
-		app.setStyleSheet(styleFile.readAll());
-	}
+	app.setStyleSheet(Theme::load());
 
 	MainWindow window;
 	window.show();
