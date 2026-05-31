@@ -14,9 +14,7 @@ QWidget {
 
 /* TOOLBAR, TOP BAR, BUTTONS */
 QToolBar {
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid {{border}};
+    background: {{mantle}};
 }
 
 QToolButton {
