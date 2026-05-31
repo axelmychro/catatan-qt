@@ -12,6 +12,12 @@ QWidget {
     color: {{fg}};
     font-size: 16px;
 }
+QToolTip {
+    padding: 2px;
+    background-color: {{surface}};
+    color: {{subtext}};
+    font-size: 12px;
+}
 
 /* TOOLBAR, TOP BAR, BUTTONS */
 QToolBar {
