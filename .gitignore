@@ -1,2 +1,3 @@
 build/ 
 .qtcreator/ 
+compile_commands.json
