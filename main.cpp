@@ -2,9 +2,6 @@
 #include "mainwindow.h"
 #include <QApplication>
 #include <QFile>
-#include <QTextStream>
-#include <QDir>
-#include <QDebug>
 
 int main(int argc, char *argv[])
 {
