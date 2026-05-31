@@ -4,7 +4,7 @@ MainWindow::MainWindow(QWidget *parent)
 	: QMainWindow(parent)
 {
 	setWindowTitle("Catatan");
-	resize(800, 600);
+	resize(1280, 720);
 }
 
 MainWindow::~MainWindow()
