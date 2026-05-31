@@ -16,8 +16,8 @@ inline QString load()
 	qss.replace("{{mantle}}", "#1e2030"); // mantle
 	qss.replace("{{fg}}", "#cad3f5"); // text
 	qss.replace("{{border}}", "#363a4f"); // surface
-	qss.replace("{{hover}}", "#6e738d"); // overlay
-	qss.replace("{{active}}", "#a5adcb"); // subtext
+	qss.replace("{{hover}}", "#363a4f"); // surface
+	qss.replace("{{active}}", "#6e738d"); // overlay
 	qss.replace("{{primary}}", "#f5bde6"); // pink
 
 	return qss;
