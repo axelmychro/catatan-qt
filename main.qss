@@ -1,5 +1,6 @@
 * {
     background: transparent;
+    color: {{fg}};
     margin: 0;
     padding: 0;
     border: none;
