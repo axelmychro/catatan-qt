@@ -1,3 +1,4 @@
+// start mainwindow.cpp
 #include "mainwindow.h"
 #include <QTextEdit>
 #include <QMenu>
@@ -14,7 +15,6 @@ MainWindow::MainWindow(QWidget *parent)
 		resize(1280, 720);
 
 		setupToolbar();
-		newFile();
 }
 
 MainWindow::~MainWindow() = default;
@@ -87,3 +87,4 @@ void MainWindow::openFile()
 				return;
 		}
 }
+// begin mainwindow.cpp
