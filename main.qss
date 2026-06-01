@@ -38,3 +38,13 @@ QToolButton:hover {
 QToolButton:pressed {
     background: {{active}};
 }
+
+/* TEXT EDITOR */
+QTextEdit {
+    background: transparent;
+    color: {{fg}};
+    font-family: monospace;
+    font-size: 16px;
+    selection-background-color: {{active}};
+    selection-color: {{fg}};
+}
