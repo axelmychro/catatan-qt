@@ -3,23 +3,25 @@
 
 #include <QMainWindow>
 #include <QToolButton>
+#include <QTextEdit>
+
+class QTextEdit;
 
 class MainWindow : public QMainWindow {
-	Q_OBJECT
+		Q_OBJECT
 
-    public:
-	explicit MainWindow(QWidget *parent = nullptr);
-	~MainWindow() override;
+	public:
+		explicit MainWindow(QWidget *parent = nullptr);
+		~MainWindow() override;
 
-	// TOOLBAR, TOP BAR, BUTTOn
-    private slots:
-	// void onNewFile();
-	// void onNewFolder();
-	// void onOpenFile();
-	// void onOpenFolder();
+		// TOOLBAR, TOP BAR, BUTTOn
+	private:
+		void setupToolbar();
+		void setupFileMenu(QToolButton *parent_button);
 
-    private:
-	void setupToolbar();
-	void setupFileMenu(QToolButton *parent_button);
+		void newFile();
+		void openFile();
+
+		QTextEdit *m_text_edit = nullptr;
 };
 #endif // MAINWINDOW_H
