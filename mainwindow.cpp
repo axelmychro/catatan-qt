@@ -4,6 +4,8 @@
 #include <QToolBar>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <QFileDialog>
+#include <QMessageBox>
 
 MainWindow::MainWindow(QWidget *parent)
 		: QMainWindow(parent)
@@ -43,10 +45,10 @@ void MainWindow::setupToolbar()
 void MainWindow::setupFileMenu(QToolButton *parent_button)
 {
 		auto *file_menu = new QMenu(parent_button);
-		file_menu->addAction("New File", []() { qDebug() << "New File"; });
-		file_menu->addAction("New Folder", []() { qDebug() << "New Folder"; });
+		file_menu->addAction("New File", this, &MainWindow::newFile);
+		file_menu->addAction("Open File", this, &MainWindow::openFile);
 		file_menu->addSeparator();
-		file_menu->addAction("Open File", []() { qDebug() << "Open File"; });
+		file_menu->addAction("New Folder", []() { qDebug() << "New Folder"; });
 		file_menu->addAction("Open Folder",
 							 []() { qDebug() << "Open Folder"; });
 
@@ -55,9 +57,8 @@ void MainWindow::setupFileMenu(QToolButton *parent_button)
 void MainWindow::newFile()
 {
 		if (!m_text_edit) {
-				// First time: create editor + layout
 				m_text_edit = new QTextEdit(this);
-				m_text_edit->setFrameShape(QFrame::NoFrame); // remove border
+				m_text_edit->setFrameShape(QFrame::NoFrame);
 				m_text_edit->setStyleSheet("background: transparent;");
 
 				auto *central = new QWidget(this);
@@ -66,6 +67,23 @@ void MainWindow::newFile()
 				layout->addWidget(m_text_edit);
 				setCentralWidget(central);
 		}
-		m_text_edit->clear(); // just clear content
-		m_text_edit->setPlainText(""); // ensure empty
+
+		m_text_edit->clear();
+		m_text_edit->setPlainText("");
+}
+void MainWindow::openFile()
+{
+		QString path = QFileDialog::getOpenFileName(
+				this, "Open File", QDir::homePath(),
+				"Text Files (*.txt *.md);;All Files (*)");
+
+		if (path.isEmpty())
+				return;
+
+		QFile file(path);
+		if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+				QMessageBox::warning(this, "Error",
+									 "Cannot open file:\n" + path);
+				return;
+		}
 }
