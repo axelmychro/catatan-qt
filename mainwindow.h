@@ -9,8 +9,7 @@
 #include <QDockWidget>
 #include <QTreeView>
 #include <QFileSystemModel>
-
-class QTextEdit;
+#include <QAction>
 
 class MainWindow : public QMainWindow {
 		Q_OBJECT
@@ -19,12 +18,17 @@ class MainWindow : public QMainWindow {
 		explicit MainWindow(QWidget *parent = nullptr);
 		~MainWindow() override;
 
-		// TOOLBAR, TOP BAR, BUTTOn
+	private slots:
+		void undo();
+		void redo();
+		void showPreview();
+
 	private:
 		void setupToolbar();
 		void setupFileMenu(QToolButton *parent_button);
 		void setupStatusBar();
 		void showWelcome();
+		void checkPreviewAvailability();
 
 		void updateStatus(const QString &file_name = {});
 
@@ -32,9 +36,6 @@ class MainWindow : public QMainWindow {
 		void openFile();
 		void openFolder();
 		void setupFolderSidebar();
-		QDockWidget *m_folder_dock = nullptr;
-		QTreeView *m_folder_view = nullptr;
-		QFileSystemModel *m_folder_model = nullptr;
 
 		void saveFile();
 		void closeFile();
@@ -46,5 +47,11 @@ class MainWindow : public QMainWindow {
 		QLabel *m_file_label = nullptr;
 		QLabel *m_pos_label = nullptr;
 		QLabel *m_welcome = nullptr;
+
+		QAction *m_preview_action = nullptr;
+
+		QDockWidget *m_folder_dock = nullptr;
+		QTreeView *m_folder_view = nullptr;
+		QFileSystemModel *m_folder_model = nullptr;
 };
 #endif // MAINWINDOW_H
