@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QToolButton>
 #include <QTextEdit>
+#include <QFileInfo>
 #include <QLabel>
 
 class QTextEdit;
@@ -25,6 +26,11 @@ class MainWindow : public QMainWindow {
 		void newFile();
 		void openFile();
 		void updateStatus(const QString &file_name = {});
+
+		void saveFile();
+		void closeFile();
+
+		QString m_current_path;
 
 		QTextEdit *m_text_edit = nullptr;
 		QStatusBar *m_status_bar = nullptr;

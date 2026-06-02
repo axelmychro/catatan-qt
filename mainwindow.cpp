@@ -49,17 +49,24 @@ void MainWindow::setupToolbar()
 void MainWindow::setupFileMenu(QToolButton *parent_button)
 {
 		auto *file_menu = new QMenu(parent_button);
+
 		file_menu->addAction("New File", this, &MainWindow::newFile);
 		file_menu->addAction("Open File", this, &MainWindow::openFile);
 		file_menu->addSeparator();
 		file_menu->addAction("New Folder", []() { qDebug() << "New Folder"; });
 		file_menu->addAction("Open Folder",
 							 []() { qDebug() << "Open Folder"; });
+		file_menu->addSeparator();
+		file_menu->addAction("Save File", this, &MainWindow::saveFile);
+		file_menu->addAction("Close File", this, &MainWindow::closeFile);
 
 		parent_button->setMenu(file_menu);
 }
 void MainWindow::newFile()
 {
+		m_current_path.clear();
+		m_welcome->hide();
+
 		if (!m_text_edit) {
 				m_text_edit = new QTextEdit(this);
 				m_text_edit->setFrameShape(QFrame::NoFrame);
@@ -80,16 +87,22 @@ void MainWindow::openFile()
 		QString path = QFileDialog::getOpenFileName(
 				this, "Open File", QDir::homePath(),
 				"Text Files (*.txt *.md);;All Files (*)");
-
 		if (path.isEmpty())
 				return;
 
 		QFile file(path);
 		if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-				QMessageBox::warning(this, "Error",
-									 "Cannot open file:\n" + path);
+				QMessageBox::warning(this, "Error", "Cannot open:\n" + path);
 				return;
 		}
+
+		if (!m_text_edit)
+				newFile();
+
+		m_text_edit->setPlainText(QTextStream(&file).readAll());
+
+		m_current_path = path; // ← track path after open
+		updateStatus(path);
 }
 void MainWindow::setupStatusBar()
 {
@@ -132,5 +145,36 @@ void MainWindow::updateStatus(const QString &fileName)
 											  "untitled" :
 											  QFileInfo(fileName).fileName());
 		}
+}
+
+void MainWindow::saveFile()
+{
+		if (!m_text_edit || m_text_edit->toPlainText().isEmpty()) {
+				return;
+		}
+		if (m_current_path.isEmpty()) {
+				QString path = QFileDialog::getSaveFileName(
+						this, "Save File", QDir::homePath(),
+						"Text Files (*.txt *.md);;All Files (*)");
+				if (path.isEmpty())
+						return;
+				m_current_path = path;
+		}
+		QFile file(m_current_path);
+		if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+				QMessageBox::warning(this, "Error",
+									 "Cannot save:\n" + m_current_path);
+				return;
+		}
+		QTextStream out(&file);
+		out << m_text_edit->toPlainText();
+
+		updateStatus(m_current_path);
+}
+
+void MainWindow::closeFile()
+{
+		m_current_path.clear();
+		showWelcome();
 }
 // end mainwindow.cpp
