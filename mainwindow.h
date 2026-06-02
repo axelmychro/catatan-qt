@@ -6,6 +6,9 @@
 #include <QTextEdit>
 #include <QFileInfo>
 #include <QLabel>
+#include <QDockWidget>
+#include <QTreeView>
+#include <QFileSystemModel>
 
 class QTextEdit;
 
@@ -23,9 +26,15 @@ class MainWindow : public QMainWindow {
 		void setupStatusBar();
 		void showWelcome();
 
+		void updateStatus(const QString &file_name = {});
+
 		void newFile();
 		void openFile();
-		void updateStatus(const QString &file_name = {});
+		void openFolder();
+		void setupFolderSidebar();
+		QDockWidget *m_folder_dock = nullptr;
+		QTreeView *m_folder_view = nullptr;
+		QFileSystemModel *m_folder_model = nullptr;
 
 		void saveFile();
 		void closeFile();

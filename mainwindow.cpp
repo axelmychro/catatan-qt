@@ -52,10 +52,8 @@ void MainWindow::setupFileMenu(QToolButton *parent_button)
 
 		file_menu->addAction("New File", this, &MainWindow::newFile);
 		file_menu->addAction("Open File", this, &MainWindow::openFile);
-		file_menu->addSeparator();
-		file_menu->addAction("New Folder", []() { qDebug() << "New Folder"; });
-		file_menu->addAction("Open Folder",
-							 []() { qDebug() << "Open Folder"; });
+		file_menu->addAction("Open Folder", this,
+							 &MainWindow::openFolder); // ← wire it
 		file_menu->addSeparator();
 		file_menu->addAction("Save File", this, &MainWindow::saveFile);
 		file_menu->addAction("Close File", this, &MainWindow::closeFile);
@@ -103,6 +101,81 @@ void MainWindow::openFile()
 
 		m_current_path = path; // ← track path after open
 		updateStatus(path);
+}
+
+void MainWindow::openFolder()
+{
+		QString path = QFileDialog::getExistingDirectory(this, "Open Folder",
+														 QDir::homePath());
+		if (path.isEmpty())
+				return;
+
+		if (!m_folder_dock) {
+				setupFolderSidebar();
+		}
+
+		m_folder_model->setRootPath(path);
+		m_folder_view->setRootIndex(m_folder_model->index(path));
+
+		m_folder_dock->show();
+
+		updateStatus(path + "/");
+}
+
+void MainWindow::setupFolderSidebar()
+{
+		m_folder_model = new QFileSystemModel(this);
+		m_folder_model->setFilter(QDir::AllEntries | QDir::NoDotAndDotDot);
+		m_folder_model->setNameFilters(QStringList()
+									   << "*.txt" << "*.md" << "*");
+		m_folder_model->setNameFilterDisables(false);
+
+		m_folder_view = new QTreeView(this);
+		m_folder_view->setModel(m_folder_model);
+		m_folder_view->setHeaderHidden(true);
+		m_folder_view->setStyleSheet(
+				"background: transparent; color: {{fg}}; border: none;"
+				"QTreeView::item { padding: 2px; }"
+				"QTreeView::item:selected { background: {{active}}; }");
+
+		m_folder_view->hideColumn(1); // size
+		m_folder_view->hideColumn(2); // type
+		m_folder_view->hideColumn(3); // modified
+
+		connect(m_folder_view, &QTreeView::doubleClicked, this,
+				[this](const QModelIndex &index) {
+						if (!m_folder_model || !index.isValid())
+								return;
+
+						QString path = m_folder_model->filePath(index);
+						QFileInfo info(path);
+
+						if (info.isFile()) {
+								if (!m_text_edit)
+										newFile();
+								m_current_path = path;
+
+								QFile file(path);
+								if (file.open(QIODevice::ReadOnly |
+											  QIODevice::Text)) {
+										m_text_edit->setPlainText(
+												QTextStream(&file).readAll());
+										updateStatus(path);
+								}
+						}
+				});
+
+		m_folder_dock = new QDockWidget("Files", this);
+		m_folder_dock->setObjectName("folderDock");
+		m_folder_dock->setWidget(m_folder_view);
+		m_folder_dock->setFeatures(QDockWidget::DockWidgetMovable |
+								   QDockWidget::DockWidgetClosable);
+		m_folder_dock->setAllowedAreas(Qt::LeftDockWidgetArea |
+									   Qt::RightDockWidgetArea);
+
+		addDockWidget(Qt::LeftDockWidgetArea, m_folder_dock);
+
+		m_folder_dock->hide();
 }
 void MainWindow::setupStatusBar()
 {
