@@ -175,6 +175,6 @@ void MainWindow::saveFile()
 void MainWindow::closeFile()
 {
 		m_current_path.clear();
-		showWelcome();
+		//showWelcome();
 }
 // end mainwindow.cpp
