@@ -9,6 +9,12 @@
 #include <QMessageBox>
 #include <QStatusBar>
 #include <QLabel>
+#include <QTreeView>
+#include <QFileSystemModel>
+#include <QDockWidget>
+#include <QTextDocument>
+#include <QTextBrowser>
+#include <QDialog>
 
 MainWindow::MainWindow(QWidget *parent)
 		: QMainWindow(parent)
@@ -23,11 +29,9 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow() = default;
 
-// TOOLBAR, TOP BAR, BUTTON
 void MainWindow::setupToolbar()
 {
 		QToolBar *top_bar = addToolBar("top_bar");
-
 		top_bar->setMovable(false);
 		top_bar->setFloatable(false);
 		top_bar->setIconSize(QSize(16, 16));
@@ -41,34 +45,63 @@ void MainWindow::setupToolbar()
 				file_button->setPopupMode(QToolButton::InstantPopup);
 				setupFileMenu(file_button);
 		}
-		top_bar->addAction("Undo");
-		top_bar->addAction("Redo");
-		top_bar->addAction("View");
+
+		auto *undo_action = top_bar->addAction("Undo");
+		undo_action->setToolTip("Undo (Ctrl+Z)");
+		undo_action->setShortcut(QKeySequence::Undo);
+		connect(undo_action, &QAction::triggered, this, &MainWindow::undo);
+
+		auto *redo_action = top_bar->addAction("Redo");
+		redo_action->setToolTip("Redo (Ctrl+Y)");
+		redo_action->setShortcut(QKeySequence::Redo);
+		connect(redo_action, &QAction::triggered, this, &MainWindow::redo);
+
+		m_preview_action = top_bar->addAction("Preview");
+		m_preview_action->setToolTip("Preview Markdown");
+		m_preview_action->setEnabled(false);
+		connect(m_preview_action, &QAction::triggered, this,
+				&MainWindow::showPreview);
+
 		top_bar->addAction("Window");
 }
+
 void MainWindow::setupFileMenu(QToolButton *parent_button)
 {
 		auto *file_menu = new QMenu(parent_button);
-
 		file_menu->addAction("New File", this, &MainWindow::newFile);
 		file_menu->addAction("Open File", this, &MainWindow::openFile);
-		file_menu->addAction("Open Folder", this,
-							 &MainWindow::openFolder); // ← wire it
+		file_menu->addAction("Open Folder", this, &MainWindow::openFolder);
 		file_menu->addSeparator();
 		file_menu->addAction("Save File", this, &MainWindow::saveFile);
 		file_menu->addAction("Close File", this, &MainWindow::closeFile);
-
 		parent_button->setMenu(file_menu);
 }
+
 void MainWindow::newFile()
 {
 		m_current_path.clear();
-		m_welcome->hide();
+		checkPreviewAvailability();
+
+		if (m_welcome)
+				m_welcome->hide();
 
 		if (!m_text_edit) {
 				m_text_edit = new QTextEdit(this);
 				m_text_edit->setFrameShape(QFrame::NoFrame);
-				m_text_edit->setStyleSheet("background: transparent;");
+				m_text_edit->setStyleSheet(
+						"background: transparent; color: {{fg}};");
+
+				connect(m_text_edit, &QTextEdit::cursorPositionChanged, this,
+						[this]() {
+								if (!m_pos_label || !m_text_edit)
+										return;
+								auto cursor = m_text_edit->textCursor();
+								m_pos_label->setText(
+										QString("%1:%2")
+												.arg(cursor.blockNumber() + 1)
+												.arg(cursor.columnNumber() +
+													 1));
+						});
 
 				auto *central = new QWidget(this);
 				auto *layout = new QVBoxLayout(central);
@@ -79,7 +112,12 @@ void MainWindow::newFile()
 
 		m_text_edit->clear();
 		m_text_edit->setPlainText("");
+		m_text_edit->setFocus();
+		updateStatus("untitled");
+		if (m_pos_label)
+				m_pos_label->setText("1:1");
 }
+
 void MainWindow::openFile()
 {
 		QString path = QFileDialog::getOpenFileName(
@@ -98,8 +136,8 @@ void MainWindow::openFile()
 				newFile();
 
 		m_text_edit->setPlainText(QTextStream(&file).readAll());
-
-		m_current_path = path; // ← track path after open
+		m_current_path = path;
+		checkPreviewAvailability();
 		updateStatus(path);
 }
 
@@ -110,15 +148,12 @@ void MainWindow::openFolder()
 		if (path.isEmpty())
 				return;
 
-		if (!m_folder_dock) {
+		if (!m_folder_dock)
 				setupFolderSidebar();
-		}
 
 		m_folder_model->setRootPath(path);
 		m_folder_view->setRootIndex(m_folder_model->index(path));
-
 		m_folder_dock->show();
-
 		updateStatus(path + "/");
 }
 
@@ -134,19 +169,16 @@ void MainWindow::setupFolderSidebar()
 		m_folder_view->setModel(m_folder_model);
 		m_folder_view->setHeaderHidden(true);
 		m_folder_view->setStyleSheet(
-				"background: transparent; color: {{fg}}; border: none;"
-				"QTreeView::item { padding: 2px; }"
-				"QTreeView::item:selected { background: {{active}}; }");
+				"background: transparent; color: {{fg}}; border: none;");
 
-		m_folder_view->hideColumn(1); // size
-		m_folder_view->hideColumn(2); // type
-		m_folder_view->hideColumn(3); // modified
+		m_folder_view->hideColumn(1);
+		m_folder_view->hideColumn(2);
+		m_folder_view->hideColumn(3);
 
 		connect(m_folder_view, &QTreeView::doubleClicked, this,
 				[this](const QModelIndex &index) {
 						if (!m_folder_model || !index.isValid())
 								return;
-
 						QString path = m_folder_model->filePath(index);
 						QFileInfo info(path);
 
@@ -154,6 +186,7 @@ void MainWindow::setupFolderSidebar()
 								if (!m_text_edit)
 										newFile();
 								m_current_path = path;
+								checkPreviewAvailability();
 
 								QFile file(path);
 								if (file.open(QIODevice::ReadOnly |
@@ -172,11 +205,10 @@ void MainWindow::setupFolderSidebar()
 								   QDockWidget::DockWidgetClosable);
 		m_folder_dock->setAllowedAreas(Qt::LeftDockWidgetArea |
 									   Qt::RightDockWidgetArea);
-
 		addDockWidget(Qt::LeftDockWidgetArea, m_folder_dock);
-
 		m_folder_dock->hide();
 }
+
 void MainWindow::setupStatusBar()
 {
 		m_status_bar = statusBar();
@@ -201,13 +233,12 @@ void MainWindow::showWelcome()
 				m_welcome = new QLabel("Catatan", this);
 				m_welcome->setAlignment(Qt::AlignCenter);
 				m_welcome->setStyleSheet(
-						"font-size: 32px; color: {{fg}}; background: transparent;");
+						"font-size: 32px; color: {{primary}}; background: transparent;");
 				m_welcome->setObjectName("welcomeLabel");
 		}
 
 		setCentralWidget(m_welcome);
 		m_welcome->show();
-
 		updateStatus("untitled");
 }
 
@@ -222,9 +253,9 @@ void MainWindow::updateStatus(const QString &fileName)
 
 void MainWindow::saveFile()
 {
-		if (!m_text_edit || m_text_edit->toPlainText().isEmpty()) {
+		if (!m_text_edit || m_text_edit->toPlainText().isEmpty())
 				return;
-		}
+
 		if (m_current_path.isEmpty()) {
 				QString path = QFileDialog::getSaveFileName(
 						this, "Save File", QDir::homePath(),
@@ -233,21 +264,100 @@ void MainWindow::saveFile()
 						return;
 				m_current_path = path;
 		}
+
 		QFile file(m_current_path);
 		if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
 				QMessageBox::warning(this, "Error",
 									 "Cannot save:\n" + m_current_path);
 				return;
 		}
+
 		QTextStream out(&file);
 		out << m_text_edit->toPlainText();
-
 		updateStatus(m_current_path);
 }
 
 void MainWindow::closeFile()
 {
 		m_current_path.clear();
-		//showWelcome();
+		checkPreviewAvailability();
+		showWelcome();
+}
+
+void MainWindow::undo()
+{
+		if (m_text_edit)
+				m_text_edit->undo();
+}
+
+void MainWindow::redo()
+{
+		if (m_text_edit)
+				m_text_edit->redo();
+}
+
+void MainWindow::checkPreviewAvailability()
+{
+		if (m_preview_action) {
+				bool isMd =
+						m_current_path.endsWith(".md", Qt::CaseInsensitive) ||
+						m_current_path.endsWith(".markdown",
+												Qt::CaseInsensitive);
+				m_preview_action->setEnabled(isMd && m_text_edit != nullptr);
+		}
+}
+
+void MainWindow::showPreview()
+{
+		if (!m_text_edit || m_current_path.isEmpty())
+				return;
+
+		QDialog *previewDialog = new QDialog(this);
+		previewDialog->setWindowTitle("Preview: " +
+									  QFileInfo(m_current_path).fileName());
+		previewDialog->resize(900, 700);
+
+		QTextBrowser *browser = new QTextBrowser(previewDialog);
+		browser->setOpenExternalLinks(true);
+
+		QVBoxLayout *layout = new QVBoxLayout(previewDialog);
+		layout->setContentsMargins(0, 0, 0, 0);
+		layout->addWidget(browser);
+		previewDialog->setLayout(layout);
+
+		QTextDocument doc;
+		doc.setMarkdown(m_text_edit->toPlainText());
+		QString html = doc.toHtml();
+
+		QString css =
+				"<style>"
+				"body { font-family: sans-serif; color: #cad3f5; background: #24273a; padding: 16px; line-height: 1; }"
+				"h1, h2, h3, h4, h5, h6 { color: #f5bde6; margin-top: 16px; margin-bottom: 16px; font-weight: 600; }"
+				"h1 { font-size: 2em; }"
+				"h2 { font-size: 1.5em; }"
+				"p { margin-bottom: 16px; }"
+				"code { background: #1e2030; padding: 2px 2px; border-radius: 8px; font-family: monospace; color: #a6da95; }"
+				"pre { background: #11111b; padding: 16px; border-radius: 8px; overflow-x: auto; border: 1px solid #313244; }"
+				"pre code { background: transparent; color: #cdd6f4; padding: 0; }"
+				"blockquote { border-left: 4px solid #89b4fa; margin: 16px 0; padding: 8px 16px; background: #313244; color: #a6adc8; border-radius: 0 4px 4px 0; }"
+				"ul, ol { margin-bottom: 16px; padding-left: 32px; }"
+				"li { margin-bottom: 8px; }"
+				"li input[type='checkbox'] { margin-right: 8px; transform: scale(1.2); accent-color: #89b4fa; }"
+				"hr { border: 0; border-top: 2px solid #313244; margin: 24px 0; }"
+				"a { color: #89b4fa; text-decoration: none; }"
+				"a:hover { text-decoration: underline; }"
+				"table { border-collapse: collapse; width: 100%; margin-bottom: 16px; }"
+				"th, td { border: 1px solid #313244; padding: 8px 12px; text-align: left; }"
+				"th { background: #313244; color: #89b4fa; }"
+				"strong { color: #f5c2e7; font-weight: bold; }"
+				"em { color: #a6e3a1; font-style: italic; }"
+				"del { color: #6c7086; text-decoration: line-through; }"
+				"img { max-width: 100%; border-radius: 8px; margin: 16px 0; }"
+				"</style>";
+
+		browser->setHtml(css + html);
+
+		previewDialog->exec();
+		previewDialog->deleteLater();
 }
 // end mainwindow.cpp
