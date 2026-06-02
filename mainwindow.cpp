@@ -7,6 +7,8 @@
 #include <QVBoxLayout>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QStatusBar>
+#include <QLabel>
 
 MainWindow::MainWindow(QWidget *parent)
 		: QMainWindow(parent)
@@ -15,6 +17,8 @@ MainWindow::MainWindow(QWidget *parent)
 		resize(1280, 720);
 
 		setupToolbar();
+		setupStatusBar();
+		showWelcome();
 }
 
 MainWindow::~MainWindow() = default;
@@ -87,4 +91,46 @@ void MainWindow::openFile()
 				return;
 		}
 }
-// begin mainwindow.cpp
+void MainWindow::setupStatusBar()
+{
+		m_status_bar = statusBar();
+		m_status_bar->setSizeGripEnabled(false);
+
+		m_file_label = new QLabel("untitled", this);
+		m_file_label->setStyleSheet("color: {{fg}}; margin-left: 4px;");
+
+		m_pos_label = new QLabel("1:1", this);
+		m_pos_label->setStyleSheet("color: {{fg}}; margin-right: 4px;");
+
+		m_status_bar->addWidget(m_file_label, 1);
+		m_status_bar->addPermanentWidget(m_pos_label);
+}
+
+void MainWindow::showWelcome()
+{
+		if (m_text_edit)
+				m_text_edit->hide();
+
+		if (!m_welcome) {
+				m_welcome = new QLabel("Catatan", this);
+				m_welcome->setAlignment(Qt::AlignCenter);
+				m_welcome->setStyleSheet(
+						"font-size: 32px; color: {{fg}}; background: transparent;");
+				m_welcome->setObjectName("welcomeLabel");
+		}
+
+		setCentralWidget(m_welcome);
+		m_welcome->show();
+
+		updateStatus("untitled");
+}
+
+void MainWindow::updateStatus(const QString &fileName)
+{
+		if (m_file_label) {
+				m_file_label->setText(fileName.isEmpty() ?
+											  "untitled" :
+											  QFileInfo(fileName).fileName());
+		}
+}
+// end mainwindow.cpp

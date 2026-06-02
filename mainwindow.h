@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QToolButton>
 #include <QTextEdit>
+#include <QLabel>
 
 class QTextEdit;
 
@@ -18,10 +19,17 @@ class MainWindow : public QMainWindow {
 	private:
 		void setupToolbar();
 		void setupFileMenu(QToolButton *parent_button);
+		void setupStatusBar();
+		void showWelcome();
 
 		void newFile();
 		void openFile();
+		void updateStatus(const QString &file_name = {});
 
 		QTextEdit *m_text_edit = nullptr;
+		QStatusBar *m_status_bar = nullptr;
+		QLabel *m_file_label = nullptr;
+		QLabel *m_pos_label = nullptr;
+		QLabel *m_welcome = nullptr;
 };
 #endif // MAINWINDOW_H
