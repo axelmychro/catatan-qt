@@ -1,7 +1,4 @@
 * {
-    background: transparent;
-    font-family: monospace;
-    color: {{fg}};
     margin: 0;
     padding: 0;
     border: none;
@@ -49,6 +46,7 @@ QStatusBar {
 QTextEdit {
     background: transparent;
     color: {{fg}};
+    font-family: monospace;
     font-size: 16px;
     selection-background-color: {{active}};
     selection-color: {{fg}};
@@ -57,4 +55,25 @@ QTextEdit {
     background: transparent;
     font-size: 32px;
     color: {{primary}};
+}
+
+/* FOLDER */
+#folderDock {
+    background: {{crust}};
+    border-right: 1px solid {{border}};
+}
+#folderDock::title {
+    background: {{mantle}};
+}
+QTreeView {
+    background: {{mantle}};
+    color: {{fg}};
+    border: none;
+}
+QTreeView::item:hover {
+    background: {{hover}};
+}
+QTreeView::item:selected {
+    background: {{active}};
+    color: {{fg}};
 }
