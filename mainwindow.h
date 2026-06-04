@@ -39,6 +39,7 @@ class MainWindow : public QMainWindow {
 
 		void saveFile();
 		void closeFile();
+		void attachImage();
 
 		QString m_current_path;
 
@@ -49,6 +50,7 @@ class MainWindow : public QMainWindow {
 		QLabel *m_welcome = nullptr;
 
 		QAction *m_preview_action = nullptr;
+		QAction *m_attach_action = nullptr;
 
 		QDockWidget *m_folder_dock = nullptr;
 		QTreeView *m_folder_view = nullptr;

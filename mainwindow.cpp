@@ -15,6 +15,10 @@
 #include <QTextDocument>
 #include <QTextBrowser>
 #include <QDialog>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QTextBlock>
 
 MainWindow::MainWindow(QWidget *parent)
 		: QMainWindow(parent)
@@ -62,6 +66,15 @@ void MainWindow::setupToolbar()
 		connect(m_preview_action, &QAction::triggered, this,
 				&MainWindow::showPreview);
 
+		// ATTACHMENT
+		m_attach_action = top_bar->addAction("Attach Image");
+		m_attach_action->setToolTip(
+				"Insert image into document (Ctrl+Shift+I)");
+		m_attach_action->setShortcut(QKeySequence("Ctrl+Shift+I"));
+		m_attach_action->setEnabled(false);
+		connect(m_attach_action, &QAction::triggered, this,
+				&MainWindow::attachImage);
+
 		top_bar->addAction("Window");
 }
 
@@ -82,36 +95,37 @@ void MainWindow::newFile()
 		m_current_path.clear();
 		checkPreviewAvailability();
 
+		if (m_text_edit) {
+				m_text_edit->clear();
+				m_text_edit->setFocus();
+				updateStatus("untitled");
+				if (m_pos_label)
+						m_pos_label->setText("1:1");
+				return;
+		}
+
 		if (m_welcome)
 				m_welcome->hide();
 
-		if (!m_text_edit) {
-				m_text_edit = new QTextEdit(this);
-				m_text_edit->setFrameShape(QFrame::NoFrame);
-				m_text_edit->setStyleSheet(
-						"background: transparent; color: {{fg}};");
+		m_text_edit = new QTextEdit(this);
+		m_text_edit->setFrameShape(QFrame::NoFrame);
 
-				connect(m_text_edit, &QTextEdit::cursorPositionChanged, this,
-						[this]() {
-								if (!m_pos_label || !m_text_edit)
-										return;
-								auto cursor = m_text_edit->textCursor();
-								m_pos_label->setText(
-										QString("%1:%2")
-												.arg(cursor.blockNumber() + 1)
-												.arg(cursor.columnNumber() +
-													 1));
-						});
+		connect(m_text_edit, &QTextEdit::cursorPositionChanged, this, [this]() {
+				if (!m_pos_label || !m_text_edit)
+						return;
+				auto cursor = m_text_edit->textCursor();
+				m_pos_label->setText(QString("%1:%2")
+											 .arg(cursor.blockNumber() + 1)
+											 .arg(cursor.columnNumber() + 1));
+		});
 
-				auto *central = new QWidget(this);
-				auto *layout = new QVBoxLayout(central);
-				layout->setContentsMargins(0, 0, 0, 0);
-				layout->addWidget(m_text_edit);
-				setCentralWidget(central);
-		}
+		auto *central = new QWidget(this);
+		auto *layout = new QVBoxLayout(central);
+		layout->setContentsMargins(0, 0, 0, 0);
+		layout->addWidget(m_text_edit);
+		setCentralWidget(central);
+		m_welcome = nullptr;
 
-		m_text_edit->clear();
-		m_text_edit->setPlainText("");
 		m_text_edit->setFocus();
 		updateStatus("untitled");
 		if (m_pos_label)
@@ -168,9 +182,6 @@ void MainWindow::setupFolderSidebar()
 		m_folder_view = new QTreeView(this);
 		m_folder_view->setModel(m_folder_model);
 		m_folder_view->setHeaderHidden(true);
-		m_folder_view->setStyleSheet(
-				"background: transparent; color: {{fg}}; border: none;");
-
 		m_folder_view->hideColumn(1);
 		m_folder_view->hideColumn(2);
 		m_folder_view->hideColumn(3);
@@ -226,19 +237,14 @@ void MainWindow::setupStatusBar()
 
 void MainWindow::showWelcome()
 {
-		if (m_text_edit)
-				m_text_edit->hide();
+		m_text_edit = nullptr;
 
-		if (!m_welcome) {
-				m_welcome = new QLabel("Catatan", this);
-				m_welcome->setAlignment(Qt::AlignCenter);
-				m_welcome->setStyleSheet(
-						"font-size: 32px; color: {{primary}}; background: transparent;");
-				m_welcome->setObjectName("welcomeLabel");
-		}
+		m_welcome = new QLabel("Catatan", this);
+		m_welcome->setAlignment(Qt::AlignCenter);
+		m_welcome->setObjectName("welcomeLabel");
 
 		setCentralWidget(m_welcome);
-		m_welcome->show();
+
 		updateStatus("untitled");
 }
 
@@ -305,6 +311,71 @@ void MainWindow::checkPreviewAvailability()
 												Qt::CaseInsensitive);
 				m_preview_action->setEnabled(isMd && m_text_edit != nullptr);
 		}
+
+		// Attach is available whenever the editor is open
+		if (m_attach_action)
+				m_attach_action->setEnabled(m_text_edit != nullptr);
+}
+
+void MainWindow::attachImage()
+{
+		if (!m_text_edit)
+				return;
+
+		// 1. Pick image
+		QString src = QFileDialog::getOpenFileName(
+				this, "Attach Image", QDir::homePath(),
+				"Images (*.png *.jpg *.jpeg *.gif *.webp *.bmp *.svg);;All Files (*)");
+		if (src.isEmpty())
+				return;
+
+		QString mdPath; // path written into the Markdown link
+
+		if (!m_current_path.isEmpty()) {
+				// Document is saved — copy image into _attachments/ beside the doc
+				QFileInfo docInfo(m_current_path);
+				QDir attachDir(docInfo.dir().filePath("_attachments"));
+				if (!attachDir.exists())
+						attachDir.mkpath(".");
+
+				QFileInfo imgInfo(src);
+				QString destName = imgInfo.fileName();
+				QString destPath = attachDir.filePath(destName);
+
+				// Avoid overwriting a different file with the same name
+				if (QFile::exists(destPath) && destPath != src) {
+						QString base = imgInfo.completeBaseName();
+						QString ext = imgInfo.suffix();
+						int n = 1;
+						while (QFile::exists(destPath)) {
+								destName = QString("%1_%2.%3")
+												   .arg(base)
+												   .arg(n++)
+												   .arg(ext);
+								destPath = attachDir.filePath(destName);
+						}
+				}
+
+				if (src != destPath)
+						QFile::copy(src, destPath);
+
+				mdPath = QString("_attachments/%1").arg(destName);
+		} else {
+				mdPath = src;
+		}
+
+		QFileInfo imgInfo(src);
+		QString altText = imgInfo.completeBaseName();
+		QString snippet = QString("![%1](%2)").arg(altText, mdPath);
+
+		QTextCursor cursor = m_text_edit->textCursor();
+		if (!cursor.atBlockStart() && cursor.block().text().length() > 0)
+				snippet.prepend("\n");
+		if (!cursor.atBlockEnd() && cursor.block().text().length() > 0)
+				snippet.append("\n");
+
+		cursor.insertText(snippet);
+		m_text_edit->setTextCursor(cursor);
 }
 
 void MainWindow::showPreview()
@@ -320,6 +391,9 @@ void MainWindow::showPreview()
 		QTextBrowser *browser = new QTextBrowser(previewDialog);
 		browser->setOpenExternalLinks(true);
 
+		QFileInfo docInfo(m_current_path);
+		browser->setSearchPaths(QStringList() << docInfo.absolutePath());
+
 		QVBoxLayout *layout = new QVBoxLayout(previewDialog);
 		layout->setContentsMargins(0, 0, 0, 0);
 		layout->addWidget(browser);
@@ -327,6 +401,9 @@ void MainWindow::showPreview()
 
 		QTextDocument doc;
 		doc.setMarkdown(m_text_edit->toPlainText());
+
+		doc.setBaseUrl(QUrl::fromLocalFile(docInfo.absolutePath() + "/"));
+
 		QString html = doc.toHtml();
 
 		QString css =
