@@ -19,7 +19,6 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QTextBlock>
-// INCLUDE TAMBAHAN
 #include <QClipboard>
 #include <QMimeData>
 #include <QDateTime>
@@ -28,10 +27,11 @@
 // SUB-CLASS KHUSUS: Mengajari QTextEdit agar bisa mengenali Paste Gambar secara otomatis
 class CustomTextEdit : public QTextEdit {
 	private:
-		MainWindow* m_mainWindow;
+		MainWindow *m_mainWindow;
 
 	protected:
-		void insertFromMimeData(const QMimeData* source) override {
+		void insertFromMimeData(const QMimeData *source) override
+		{
 				// Cek apakah data yang di-paste mengandung gambar/screenshot
 				if (source && source->hasImage()) {
 						m_mainWindow->handleImagePaste();
@@ -42,8 +42,11 @@ class CustomTextEdit : public QTextEdit {
 		}
 
 	public:
-		CustomTextEdit(MainWindow* mainWindow, QWidget* parent = nullptr)
-				: QTextEdit(parent), m_mainWindow(mainWindow) {}
+		CustomTextEdit(MainWindow *mainWindow, QWidget *parent = nullptr)
+				: QTextEdit(parent)
+				, m_mainWindow(mainWindow)
+		{
+		}
 };
 
 MainWindow::MainWindow(QWidget *parent)
@@ -133,8 +136,7 @@ void MainWindow::newFile()
 		if (m_welcome)
 				m_welcome->hide();
 
-		// MENGGUNAKAN CUSTOM TEXT EDIT YANG SUDAH KITA AJARI FITUR PASTE GAMBAR
-		m_text_edit = new CustomTextEdit(this, this);
+		m_text_edit = new QTextEdit(this);
 		m_text_edit->setFrameShape(QFrame::NoFrame);
 
 		connect(m_text_edit, &QTextEdit::cursorPositionChanged, this, [this]() {
@@ -356,9 +358,10 @@ void MainWindow::attachImage()
 		if (src.isEmpty())
 				return;
 
-		QString mdPath;
+		QString mdPath; // path written into the Markdown link
 
 		if (!m_current_path.isEmpty()) {
+				// Document is saved — copy image into _attachments/ beside the doc
 				QFileInfo docInfo(m_current_path);
 				QDir attachDir(docInfo.dir().filePath("_attachments"));
 				if (!attachDir.exists())
@@ -374,9 +377,9 @@ void MainWindow::attachImage()
 						int n = 1;
 						while (QFile::exists(destPath)) {
 								destName = QString("%1_%2.%3")
-								.arg(base)
-										.arg(n++)
-										.arg(ext);
+												   .arg(base)
+												   .arg(n++)
+												   .arg(ext);
 								destPath = attachDir.filePath(destName);
 						}
 				}
@@ -419,7 +422,9 @@ void MainWindow::handleImagePaste()
 
 				QString mdPath;
 				QString destPath;
-				QString fileName = QString("pasted_%1.png").arg(QDateTime::currentMSecsSinceEpoch());
+				QString fileName =
+						QString("pasted_%1.png")
+								.arg(QDateTime::currentMSecsSinceEpoch());
 
 				if (!m_current_path.isEmpty()) {
 						QFileInfo docInfo(m_current_path);
@@ -436,12 +441,15 @@ void MainWindow::handleImagePaste()
 				}
 
 				if (img.save(destPath, "PNG")) {
-						QString snippet = QString("![Pasted Image](%2)").arg(mdPath);
+						QString snippet =
+								QString("![Pasted Image](%2)").arg(mdPath);
 
 						QTextCursor cursor = m_text_edit->textCursor();
-						if (!cursor.atBlockStart() && cursor.block().text().length() > 0)
+						if (!cursor.atBlockStart() &&
+							cursor.block().text().length() > 0)
 								snippet.prepend("\n");
-						if (!cursor.atBlockEnd() && cursor.block().text().length() > 0)
+						if (!cursor.atBlockEnd() &&
+							cursor.block().text().length() > 0)
 								snippet.append("\n");
 
 						cursor.insertText(snippet);
@@ -456,7 +464,8 @@ void MainWindow::showPreview()
 				return;
 
 		QDialog *previewDialog = new QDialog(this);
-		previewDialog->setWindowTitle("Preview: " + QFileInfo(m_current_path).fileName());
+		previewDialog->setWindowTitle("Preview: " +
+									  QFileInfo(m_current_path).fileName());
 		previewDialog->resize(900, 700);
 
 		QTextBrowser *browser = new QTextBrowser(previewDialog);
@@ -472,6 +481,7 @@ void MainWindow::showPreview()
 
 		QTextDocument doc;
 		doc.setMarkdown(m_text_edit->toPlainText());
+
 		doc.setBaseUrl(QUrl::fromLocalFile(docInfo.absolutePath() + "/"));
 
 		QString html = doc.toHtml();
