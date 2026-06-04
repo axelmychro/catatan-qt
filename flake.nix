@@ -37,6 +37,7 @@
         # set the environment variables that Qt apps expect
         shellHook = ''
           echo "Entering Qt6 development environment"
+          export e=${"EDITOR:-nano"}
 
           # Set up Qt6 library paths for linking
           export QT_PLUGIN_PATH="${qtEnv}/lib/qt-6/plugins"
