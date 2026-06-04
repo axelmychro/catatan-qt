@@ -10,9 +10,11 @@
         # List of packages retrived from
         # https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/libraries/qt-6/default.nix
         pkgs.qt6.qtbase
+        pkgs.qt6.qtwebengine
         pkgs.qt6.qttools
         pkgs.qt6.qtdeclarative
         pkgs.qt6.qt5compat
+        pkgs.qt6.qtwebchannel
         pkgs.qt6.qtpositioning
       ];
     in
