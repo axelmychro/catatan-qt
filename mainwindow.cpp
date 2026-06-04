@@ -359,8 +359,6 @@ void MainWindow::attachImage()
 		if (src.isEmpty())
 				return;
 
-		QString mdPath;
-
 		if (!m_current_path.isEmpty()) {
 				QFileInfo docInfo(m_current_path);
 				QDir attachDir(docInfo.dir().filePath("_attachments"));
