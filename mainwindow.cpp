@@ -136,7 +136,8 @@ void MainWindow::newFile()
 		if (m_welcome)
 				m_welcome->hide();
 
-		m_text_edit = new QTextEdit(this);
+		// MENGGUNAKAN CUSTOM TEXT EDIT YANG SUDAH KITA AJARI FITUR PASTE GAMBAR
+		m_text_edit = new CustomTextEdit(this, this);
 		m_text_edit->setFrameShape(QFrame::NoFrame);
 
 		connect(m_text_edit, &QTextEdit::cursorPositionChanged, this, [this]() {
@@ -358,10 +359,9 @@ void MainWindow::attachImage()
 		if (src.isEmpty())
 				return;
 
-		QString mdPath; // path written into the Markdown link
+		QString mdPath;
 
 		if (!m_current_path.isEmpty()) {
-				// Document is saved — copy image into _attachments/ beside the doc
 				QFileInfo docInfo(m_current_path);
 				QDir attachDir(docInfo.dir().filePath("_attachments"));
 				if (!attachDir.exists())
@@ -481,7 +481,6 @@ void MainWindow::showPreview()
 
 		QTextDocument doc;
 		doc.setMarkdown(m_text_edit->toPlainText());
-
 		doc.setBaseUrl(QUrl::fromLocalFile(docInfo.absolutePath() + "/"));
 
 		QString html = doc.toHtml();
