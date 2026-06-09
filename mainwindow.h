@@ -18,6 +18,9 @@ class MainWindow : public QMainWindow {
 		explicit MainWindow(QWidget *parent = nullptr);
 		~MainWindow() override;
 
+		// ✨ SOLUSI PASTI: Kita jadikan PUBLIC agar kelas CustomTextEdit di mainwindow.cpp bebas memanggilnya tanpa eror privasi kontekstual!
+		void handleImagePaste();
+
 	private slots:
 		void undo();
 		void redo();

@@ -19,6 +19,32 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QTextBlock>
+// INCLUDE TAMBAHAN
+#include <QClipboard>
+#include <QMimeData>
+#include <QDateTime>
+#include <QApplication>
+
+// SUB-CLASS KHUSUS: Mengajari QTextEdit agar bisa mengenali Paste Gambar secara otomatis
+class CustomTextEdit : public QTextEdit {
+	private:
+		MainWindow* m_mainWindow;
+
+	protected:
+		void insertFromMimeData(const QMimeData* source) override {
+				// Cek apakah data yang di-paste mengandung gambar/screenshot
+				if (source && source->hasImage()) {
+						m_mainWindow->handleImagePaste();
+						return;
+				}
+				// Jika teks biasa, biarkan berjalan normal seperti biasa
+				QTextEdit::insertFromMimeData(source);
+		}
+
+	public:
+		CustomTextEdit(MainWindow* mainWindow, QWidget* parent = nullptr)
+				: QTextEdit(parent), m_mainWindow(mainWindow) {}
+};
 
 MainWindow::MainWindow(QWidget *parent)
 		: QMainWindow(parent)
@@ -107,7 +133,8 @@ void MainWindow::newFile()
 		if (m_welcome)
 				m_welcome->hide();
 
-		m_text_edit = new QTextEdit(this);
+		// MENGGUNAKAN CUSTOM TEXT EDIT YANG SUDAH KITA AJARI FITUR PASTE GAMBAR
+		m_text_edit = new CustomTextEdit(this, this);
 		m_text_edit->setFrameShape(QFrame::NoFrame);
 
 		connect(m_text_edit, &QTextEdit::cursorPositionChanged, this, [this]() {
@@ -281,6 +308,7 @@ void MainWindow::saveFile()
 		QTextStream out(&file);
 		out << m_text_edit->toPlainText();
 		updateStatus(m_current_path);
+		checkPreviewAvailability(); // Biar tombol langsung mendeteksi setelah save pertama kali
 }
 
 void MainWindow::closeFile()
@@ -302,6 +330,7 @@ void MainWindow::redo()
 				m_text_edit->redo();
 }
 
+// LOGIKA ASLI KAMU TETAP DIJAGA UTUH
 void MainWindow::checkPreviewAvailability()
 {
 		if (m_preview_action) {
@@ -312,7 +341,6 @@ void MainWindow::checkPreviewAvailability()
 				m_preview_action->setEnabled(isMd && m_text_edit != nullptr);
 		}
 
-		// Attach is available whenever the editor is open
 		if (m_attach_action)
 				m_attach_action->setEnabled(m_text_edit != nullptr);
 }
@@ -322,17 +350,15 @@ void MainWindow::attachImage()
 		if (!m_text_edit)
 				return;
 
-		// 1. Pick image
 		QString src = QFileDialog::getOpenFileName(
 				this, "Attach Image", QDir::homePath(),
 				"Images (*.png *.jpg *.jpeg *.gif *.webp *.bmp *.svg);;All Files (*)");
 		if (src.isEmpty())
 				return;
 
-		QString mdPath; // path written into the Markdown link
+		QString mdPath;
 
 		if (!m_current_path.isEmpty()) {
-				// Document is saved — copy image into _attachments/ beside the doc
 				QFileInfo docInfo(m_current_path);
 				QDir attachDir(docInfo.dir().filePath("_attachments"));
 				if (!attachDir.exists())
@@ -342,16 +368,15 @@ void MainWindow::attachImage()
 				QString destName = imgInfo.fileName();
 				QString destPath = attachDir.filePath(destName);
 
-				// Avoid overwriting a different file with the same name
 				if (QFile::exists(destPath) && destPath != src) {
 						QString base = imgInfo.completeBaseName();
 						QString ext = imgInfo.suffix();
 						int n = 1;
 						while (QFile::exists(destPath)) {
 								destName = QString("%1_%2.%3")
-												   .arg(base)
-												   .arg(n++)
-												   .arg(ext);
+								.arg(base)
+										.arg(n++)
+										.arg(ext);
 								destPath = attachDir.filePath(destName);
 						}
 				}
@@ -378,14 +403,60 @@ void MainWindow::attachImage()
 		m_text_edit->setTextCursor(cursor);
 }
 
+// LOGIKA PROSES SIMPAN GAMBAR DARI CLIPBOARD
+void MainWindow::handleImagePaste()
+{
+		if (!m_text_edit)
+				return;
+
+		const QClipboard *clipboard = QApplication::clipboard();
+		const QMimeData *mimeData = clipboard->mimeData();
+
+		if (mimeData->hasImage()) {
+				QImage img = qvariant_cast<QImage>(mimeData->imageData());
+				if (img.isNull())
+						return;
+
+				QString mdPath;
+				QString destPath;
+				QString fileName = QString("pasted_%1.png").arg(QDateTime::currentMSecsSinceEpoch());
+
+				if (!m_current_path.isEmpty()) {
+						QFileInfo docInfo(m_current_path);
+						QDir attachDir(docInfo.dir().filePath("_attachments"));
+						if (!attachDir.exists())
+								attachDir.mkpath(".");
+
+						destPath = attachDir.filePath(fileName);
+						mdPath = QString("_attachments/%1").arg(fileName);
+				} else {
+						// Jika masih untitled, simpan di folder Temp sistem laptop
+						destPath = QDir::temp().filePath(fileName);
+						mdPath = QUrl::fromLocalFile(destPath).toString();
+				}
+
+				if (img.save(destPath, "PNG")) {
+						QString snippet = QString("![Pasted Image](%2)").arg(mdPath);
+
+						QTextCursor cursor = m_text_edit->textCursor();
+						if (!cursor.atBlockStart() && cursor.block().text().length() > 0)
+								snippet.prepend("\n");
+						if (!cursor.atBlockEnd() && cursor.block().text().length() > 0)
+								snippet.append("\n");
+
+						cursor.insertText(snippet);
+						m_text_edit->setTextCursor(cursor);
+				}
+		}
+}
+
 void MainWindow::showPreview()
 {
 		if (!m_text_edit || m_current_path.isEmpty())
 				return;
 
 		QDialog *previewDialog = new QDialog(this);
-		previewDialog->setWindowTitle("Preview: " +
-									  QFileInfo(m_current_path).fileName());
+		previewDialog->setWindowTitle("Preview: " + QFileInfo(m_current_path).fileName());
 		previewDialog->resize(900, 700);
 
 		QTextBrowser *browser = new QTextBrowser(previewDialog);
@@ -401,7 +472,6 @@ void MainWindow::showPreview()
 
 		QTextDocument doc;
 		doc.setMarkdown(m_text_edit->toPlainText());
-
 		doc.setBaseUrl(QUrl::fromLocalFile(docInfo.absolutePath() + "/"));
 
 		QString html = doc.toHtml();
@@ -433,7 +503,6 @@ void MainWindow::showPreview()
 				"</style>";
 
 		browser->setHtml(css + html);
-
 		previewDialog->exec();
 		previewDialog->deleteLater();
 }
