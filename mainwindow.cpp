@@ -269,6 +269,8 @@ void MainWindow::attachImage()
 		if (src.isEmpty())
 				return;
 
+		QString mdPath; // FIXED: Variable was missing
+
 		if (!m_current_path.isEmpty()) {
 				QFileInfo docInfo(m_current_path);
 				QDir attachDir(docInfo.dir().filePath("_attachments"));
@@ -342,36 +344,43 @@ void MainWindow::showPreview()
 
 		QWebEngineView *webView = new QWebEngineView(previewDialog);
 
-		// Convert Markdown to HTML
 		QTextDocument doc;
 		doc.setMarkdown(m_text_edit->toPlainText());
 		QString htmlContent = doc.toHtml();
 
-		// Inject CSS for resizing and constraint
-		// display: block + resize: both + overflow: auto is the standard way to enable browser-native resize
+		// Improved CSS/JS for resizing
 		QString styleAndScript = R"(
         <style>
             body { font-family: sans-serif; color: #cad3f5; background: #24273a; padding: 20px; }
-            img { 
-                max-height: 400px; 
-                display: block;
-                resize: both;
-                overflow: auto;
+            .img-wrapper { 
+                resize: both; 
+                overflow: auto; 
+                display: inline-block; 
                 border: 2px dashed #89b4fa;
-                padding: 2px;
+                max-width: 100%;
+                min-width: 100px;
+                min-height: 100px;
+                padding: 5px;
+            }
+            .img-wrapper img { 
+                width: 100%; 
+                height: 100%; 
+                pointer-events: none; /* Prevents image dragging from interfering with resize */
             }
         </style>
         <script>
-            // Optional: force images to be resizable if they don't have it by default
-            window.onload = () => {
+            document.addEventListener('DOMContentLoaded', () => {
                 document.querySelectorAll('img').forEach(img => {
-                    img.style.cursor = 'nwse-resize';
+                    let wrapper = document.createElement('div');
+                    wrapper.className = 'img-wrapper';
+                    wrapper.style.width = '400px'; 
+                    img.parentNode.insertBefore(wrapper, img);
+                    wrapper.appendChild(img);
                 });
-            };
+            });
         </script>
     )";
 
-		// Set the base URL so images load correctly relative to the file path
 		QUrl baseUrl = QUrl::fromLocalFile(
 				QFileInfo(m_current_path).absolutePath() + "/");
 		webView->setHtml(styleAndScript + htmlContent, baseUrl);
